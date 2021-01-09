@@ -2454,7 +2454,7 @@ class YoutubeTabIE(YoutubeBaseInfoExtractor):
                         (?:
                             (?:channel|c|user|feed)/|
                             (?:playlist|watch)\?.*?\blist=|
-                            (?!(?:watch|embed|v|e)\b)
+                            (?!(?:watch|embed|v|e|results)\b)
                         )
                         (?P<id>[^/?\#&]+)
                     '''
@@ -3474,11 +3474,11 @@ class YoutubeSearchDateIE(YoutubeSearchIE):
     _SEARCH_PARAMS = 'CAI%3D'
 
 
-r"""
 class YoutubeSearchURLIE(YoutubeSearchIE):
-    IE_DESC = 'YouTube.com search URLs'
-    IE_NAME = 'youtube:search_url'
-    _VALID_URL = r'https?://(?:www\.)?youtube\.com/results\?(.*?&)?(?:search_query|q)=(?P<query>[^&]+)(?:[&]|$)'
+    IE_DESC = 'YouTube.com searches, "ytsearch" keyword'
+    IE_NAME = YoutubeSearchIE.IE_NAME + '_url'
+    _VALID_URL = r'https?://(?:www\.)?youtube\.com/results\?(.*?&)?(?:search_query|q)=(?:[^&]+)(?:[&]|$)'
+    # _MAX_RESULTS = 100
     _TESTS = [{
         'url': 'https://www.youtube.com/results?baz=bar&search_query=youtube-dl+test+video&filters=video&lclk=video',
         'playlist_mincount': 5,
@@ -3490,12 +3490,15 @@ class YoutubeSearchURLIE(YoutubeSearchIE):
         'only_matching': True,
     }]
 
+    @classmethod
+    def _make_valid_url(cls):
+        return cls._VALID_URL
+
     def _real_extract(self, url):
-        mobj = re.match(self._VALID_URL, url)
-        query = compat_urllib_parse_unquote_plus(mobj.group('query'))
-        webpage = self._download_webpage(url, query)
-        return self.playlist_result(self._process_page(webpage), playlist_title=query)
-"""
+        qs = compat_parse_qs(compat_urllib_parse_urlparse(url).query)
+        query = (qs.get('search_query') or qs.get('q'))[0]
+        self._SEARCH_PARAMS = qs.get('sp', ('',))[0]
+        return self._get_n_results(query, self._MAX_RESULTS)
 
 
 class YoutubeFeedsInfoExtractor(YoutubeTabIE):
